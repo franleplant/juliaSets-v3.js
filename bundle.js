@@ -1,78 +1,78 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 'use strict';
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = drawPointFactory;
-
 var _colorJs = require('color-js');
 
 var _colorJs2 = _interopRequireDefault(_colorJs);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function drawPointFactory(width, height, initialColor, MAX_ITER) {
-  var COLOR_K = arguments.length <= 4 || arguments[4] === undefined ? 2 : arguments[4];
-
-  var color = undefined;
-  var canvas = document.getElementById('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  canvas = canvas.getContext("2d");
-
-  return function drawPoint(x, y, k) {
-    //color = initialColor.shiftHue(k * COLOR_K % 360).desaturateByRatio(k/MAX_ITER).toCSS()
-    color = initialColor.shiftHue(k * COLOR_K % 360).toCSS();
-    canvas.fillStyle = color;
-    canvas.fillRect(x, y, 1, 1);
-  };
-}
-
-},{"color-js":3}],2:[function(require,module,exports){
-'use strict';
-
-var _colorJs = require('color-js');
-
-var _colorJs2 = _interopRequireDefault(_colorJs);
-
-var _drawPoint = require('./drawPoint');
-
-var _drawPoint2 = _interopRequireDefault(_drawPoint);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var C = [0.279, 0];
-var MAX_ITER = 1000;
 var N = 500;
 var M = N;
-var RangeX = 3;
+var RangeX = 2;
 var RangeY = RangeX;
-var BAILOUT = 2;
-
 var COLOR_K = 5;
+
+var canvas = document.getElementById('canvas');
+canvas.width = N;
+canvas.height = M;
+var ctx = canvas.getContext("2d");
+
+function getInitialState(xCenter, yCenter) {
+  var RangeX = arguments.length <= 2 || arguments[2] === undefined ? 2 : arguments[2];
+  var RangeY = arguments.length <= 3 || arguments[3] === undefined ? 2 : arguments[3];
+  var N = arguments[4];
+  var M = arguments[5];
+
+  return {
+    dx: RangeX / N,
+    dy: RangeY / M,
+    x0: xCenter - RangeX / 2,
+    y0: yCenter + RangeY / 2
+  };
+}
+
 var initialColor = (0, _colorJs2.default)({ hue: 150, saturation: 0.9, value: 0.9 });
 
-var drawPoint = (0, _drawPoint2.default)(N, M, initialColor, MAX_ITER, COLOR_K);
+function draw() {
+  RangeY = RangeX *= 0.95;
+  var initialState = getInitialState(0.5, 0.174, RangeX, RangeY, N, M);
+  var B = fractal(initialState, initialColor, N, M);
+  var arr = new Uint8ClampedArray(B);
+  var img = new ImageData(arr, N, M);
+  ctx.putImageData(img, 0, 0);
+  window.requestAnimationFrame(draw);
+}
 
-fractal(drawPoint);
+window.requestAnimationFrame(draw);
 
-function fractal(drawPoint) {
+var BAILOUT = 2;
+var MAX_ITER = 360;
+// (initialState) => colorArray B
+// colorArray: [r0,g0,b0,a0, r1,g1,b1,a1, ...]
+function fractal(_ref, initialColor, N, M) {
+  var x0 = _ref.x0;
+  var y0 = _ref.y0;
+  var dx = _ref.dx;
+  var dy = _ref.dy;
+
   var k = undefined,
       x = undefined,
       y = undefined,
       xx = undefined,
       yy = undefined,
       u = undefined,
-      v = undefined;
-  var dx = RangeX / N;
-  var dy = RangeY / M;
+      v = undefined,
+      pos = undefined,
+      col = undefined,
+      color = undefined;
+  var B = [];
 
   for (var j = 0; j < M; j++) {
     for (var i = 0; i < N; i++) {
-      x = -(RangeX / 2) + i * dx;
-      y = RangeY / 2 - j * dy;
-      console.log(i, j, x, y);
+      x = x0 + i * dx;
+      y = y0 - j * dy;
 
       xx = x * x;
       yy = y * y;
@@ -87,12 +87,27 @@ function fractal(drawPoint) {
         xx = x * x;
         yy = y * y;
       }
-      drawPoint(i, j, k);
+      pos = 4 * M * j;
+      col = 4 * i;
+
+      var _initialColor$shiftHu = initialColor.shiftHue(k * COLOR_K % 360).toRGB();
+
+      var red = _initialColor$shiftHu.red;
+      var green = _initialColor$shiftHu.green;
+      var blue = _initialColor$shiftHu.blue;
+      var alpha = _initialColor$shiftHu.alpha;
+
+      B[pos + col + 0] = red * 255;
+      B[pos + col + 1] = green * 255;
+      B[pos + col + 2] = blue * 255;
+      B[pos + col + 3] = alpha * 255;
     }
   }
+
+  return B;
 }
 
-},{"./drawPoint":1,"color-js":3}],3:[function(require,module,exports){
+},{"color-js":2}],2:[function(require,module,exports){
 // Copyright (c) 2008-2013, Andrew Brehaut, Tim Baumann, Matt Wilson, 
 //                          Simon Heimler, Michel Vielmetter 
 //
@@ -933,4 +948,4 @@ if(typeof module !== 'undefined') {
   module.exports = net.brehaut.Color;
 }
 
-},{}]},{},[2]);
+},{}]},{},[1]);
